@@ -67,9 +67,9 @@ func (c *MemoryCache) Get(ctx context.Context, key string) (interface{}, bool, e
 	// TODO: Check for expiry, and clear if expired.
 
 	// Mark as most recently read.
-	c.mostRecentlyRead.MoveToBack(elmt)
+	c.mostRecentlyRead.MoveToFront(elmt)
 
-	return item.value, false, nil
+	return item.value, true, nil
 }
 
 // Set caches the given value (which may be nil) under the given key,

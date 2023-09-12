@@ -162,5 +162,41 @@ func TestMemoryCache_Capacity(t *testing.T) {
 func TestMemoryCache_Expiry(t *testing.T) {
 	t.Parallel()
 
-	t.Skip("TODO: Implement!")
+	// We should be able to limit the cache to a fixed memory capacity.
+	// Adding items to the cache beyond the capacity should purge the
+	// least recently read items.
+
+	cache := TestMemoryCache{
+		cache: &MemoryCache{
+			MaxItems: 3,
+		},
+		ctx: context.Background(),
+		t:   t,
+	}
+
+	// Add items up to the capacity. All items should be retained.
+
+	a := "A"
+	b := "B"
+	c := "C"
+
+	cache.Set("a", a, 10*time.Second)
+	cache.Set("b", b, 10*time.Second)
+	cache.Set("c", c, 10*time.Second)
+
+	cache.assertCachedEquals("a", a)
+	cache.assertCachedEquals("b", b)
+	cache.assertCachedEquals("c", c)
+
+	time.Sleep(11 * time.Second)
+
+	/*elmt, ok := cache.cache.elementsByKey["a"]
+	if !ok {
+		item := elmt.Value.(memoryCacheItem)
+		assertNil(t, item)
+	}*/
+
+	cache.assertNotInCache("a")
+	cache.assertNotInCache("b")
+	cache.assertNotInCache("c")
 }

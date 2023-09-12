@@ -8,8 +8,9 @@ import (
 )
 
 type memoryCacheItem struct {
-	key   string
-	value interface{}
+	key        string
+	value      interface{}
+	expireAfer time.Time
 }
 
 type MemoryCache struct {
@@ -65,7 +66,10 @@ func (c *MemoryCache) Get(ctx context.Context, key string) (interface{}, bool, e
 	item := elmt.Value.(memoryCacheItem)
 
 	// TODO: Check for expiry, and clear if expired.
-
+	if item.expireAfer.Before(time.Now()) {
+		c.clearWhenLocked(ctx, item.key)
+		return nil, false, nil
+	}
 	// Mark as most recently read.
 	c.mostRecentlyRead.MoveToFront(elmt)
 
@@ -83,9 +87,12 @@ func (c *MemoryCache) Set(ctx context.Context, key string, val interface{}, expi
 
 	// Add item.
 	// TODO: Store expiry too, and clear when expired.
-	item := memoryCacheItem{key, val}
+	item := memoryCacheItem{key, val, time.Now().Add(expireAfter)}
 	elmt := c.mostRecentlyRead.PushFront(item)
 	c.elementsByKey[key] = elmt
+	c.scheduler.RunOnceAfter(ctx, expireAfter, func() {
+		c.clearWhenLocked(ctx, item.key)
+	})
 
 	// If we're over capacity, evict least recently read items.
 	for c.MaxItems > 0 && len(c.elementsByKey) > c.MaxItems {
